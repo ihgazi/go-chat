@@ -1,0 +1,7 @@
+[gateway_dev]
+HOST = "localhost"
+PORT = 8801
+
+[server_dev]
+HOST = "localhost"
+PORT = 8800
