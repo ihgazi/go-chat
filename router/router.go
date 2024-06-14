@@ -1,20 +1,18 @@
-package router 
+package router
 
 import (
-    "github.com/ihgazi/go-chat/internal/user"
-    "github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin"
+	"github.com/ihgazi/go-chat/internal/user"
 )
 
 // GIN Router to create API endpoints
 
 var r *gin.Engine
 
-func InitRouter(userHandler *user.Handler) {
-    r = gin.Default()
+func Init(userHandler *user.Handler) *gin.Engine {
+	r = gin.Default()
 
-    r.POST("/signup", userHandler.CreateUser)
-}
+	r.POST("/signup", userHandler.CreateUser)
 
-func Run(addr string) error {
-    return r.Run(addr)
+	return r
 }
