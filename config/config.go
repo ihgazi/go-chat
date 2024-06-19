@@ -3,7 +3,9 @@ package config
 import (
 	"os"
 
+	"github.com/joho/godotenv"
 	"github.com/pelletier/go-toml/v2"
+	"log"
 )
 
 type Config struct {
@@ -39,4 +41,15 @@ func LoadConfig(path string) Config {
 	}
 
 	return *config
+}
+
+// Load .env configs
+func LoadEnv() string {
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Fatalf("Error loading .env file: %s", err)
+	}
+
+	secret_key := os.Getenv("SECRET_KEY")
+	return secret_key
 }
