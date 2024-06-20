@@ -7,6 +7,7 @@ import (
 	"github.com/ihgazi/go-chat/config"
 	"github.com/ihgazi/go-chat/db"
 	"github.com/ihgazi/go-chat/internal/user"
+	"github.com/ihgazi/go-chat/internal/ws"
 	"github.com/ihgazi/go-chat/router"
 )
 
@@ -23,11 +24,15 @@ func main() {
 	userSvc := user.NewService(userRep)
 	userHndlr := user.NewHandler(userSvc)
 
+	hub := ws.NewHub()
+	wsHandler := ws.NewHandler(hub)
+	go hub.Run()
+
 	// Pulling in server config
 	conf := config.LoadConfig("config.toml")
 
 	// Initializing GIN router and running the server
-	r := router.Init(userHndlr)
+	r := router.Init(userHndlr, wsHandler)
 	addr := fmt.Sprintf("%s:%d", conf.ServerConfig.Host, conf.ServerConfig.Port)
 	if err := r.Run(addr); err != nil {
 		log.Fatalf("Error: %v", err)
