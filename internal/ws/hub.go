@@ -44,6 +44,7 @@ func (h *Hub) Run() {
                         Content: "user has left the chat",
                         RoomID: cl.RoomID,
                         Username: cl.Username,
+                        UserID: cl.ID,
                     }
 
                     delete(r.Clients, cl.ID)
