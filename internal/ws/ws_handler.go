@@ -70,6 +70,7 @@ func (h *Handler) JoinRoom(c *gin.Context) {
         Content: "A new user has joined the room",
         RoomID: roomID,
         Username: username,
+        UserID: clientID,
     }
 
     // Register new client through the register channel

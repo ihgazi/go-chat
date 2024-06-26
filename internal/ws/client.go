@@ -18,6 +18,7 @@ type Message struct {
     Content string `json:"content"`
     RoomID string `json:"room_id"`
     Username string `json:"username"`
+    UserID string `json:"user_id"`
 }
 
 // Take message from client channel
@@ -57,6 +58,7 @@ func (cl *Client) ReadMessage(hub *Hub) {
             Content: string(m),
             RoomID: cl.RoomID,
             Username: cl.Username,
+            UserID: cl.ID,
         }
 
         hub.Broadcast <- msg
