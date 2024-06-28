@@ -59,3 +59,12 @@ func (h *Handler) Logout(c *gin.Context) {
     c.SetCookie("jwt", "", -1, "", "", false, true)
     c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
 }
+
+// Authentication endpoint to check validity of jwt token
+// Can be reused for refresh token in future
+func (h *Handler) AuthUser(c *gin.Context) {
+    userID, _ := c.Get("userID")
+    username, _ := c.Get("username")
+
+    c.JSON(http.StatusOK, gin.H{"id": userID, "username": username})
+}
