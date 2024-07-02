@@ -8,18 +8,13 @@ import (
 )
 
 type Handler struct {
-    hub *Hub
+    Service
 }
 
-func NewHandler(h *Hub) *Handler {
+func NewHandler(s Service) *Handler {
     return &Handler{
-        hub: h,
+        s,
     }
-}
-
-type CreateRoomReq struct {
-    ID string `json:"id"`
-    Name string `json:"name"`
 }
 
 func (h *Handler) CreateRoom(c *gin.Context) {
@@ -29,13 +24,12 @@ func (h *Handler) CreateRoom(c *gin.Context) {
         return
     }
 
-    h.hub.Rooms[req.ID] = &Room{
-        ID: req.ID,
-        Name: req.Name,
-        Clients: make(map[string]*Client),
+    res, err := h.Service.CreateRoom(c.Request.Context(), &req)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
     }
 
-    c.JSON(http.StatusOK, req)
+    c.JSON(http.StatusOK, res)
 }
 
 var upgrader = websocket.Upgrader{
@@ -75,54 +69,21 @@ func (h *Handler) JoinRoom(c *gin.Context) {
         UserID: clientIDStr,
     }
 
-    // Register new client through the register channel
-    h.hub.Register <- cl
-    // Broadcast the message
-    h.hub.Broadcast <- m
-
-    go cl.WriteMessage()
-    cl.ReadMessage(h.hub)
+    h.Service.JoinRoom(c.Request.Context(), cl, m)
 }
 
-type RoomRes struct {
-    ID string `json:"id"`
-    Name string `json:"name"`
-}
 
 // get currently active rooms in hub
 func (h* Handler) GetRooms(c *gin.Context) {
-    rooms := make([]*RoomRes, 0)
-
-    for _, room := range h.hub.Rooms {
-        rooms = append(rooms, &RoomRes{
-            ID: room.ID,
-            Name: room.Name,
-        })
-    }
-
-    c.JSON(http.StatusOK, rooms)
-}
-
-type ClientRes struct {
-    ID string `json:"id"`
-    Username string `json:"username"`
+    r := h.Service.GetRooms(c.Request.Context())
+    
+    c.JSON(http.StatusOK, r)
 }
 
 func (h *Handler) GetClients(c *gin.Context) {
-	var clients []ClientRes
 	roomId := c.Param("roomId")
 
-	if _, ok := h.hub.Rooms[roomId]; !ok {
-		clients = make([]ClientRes, 0)
-		c.JSON(http.StatusOK, clients)
-	}
-
-	for _, c := range h.hub.Rooms[roomId].Clients {
-		clients = append(clients, ClientRes{
-			ID: c.ID,
-			Username: c.Username,
-		})
-	}
+    clients := h.Service.GetClients(c.Request.Context(), roomId)
 
 	c.JSON(http.StatusOK, clients)
 }
