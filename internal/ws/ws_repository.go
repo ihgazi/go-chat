@@ -11,6 +11,7 @@ type DBTX interface {
     PrepareContext(ctx context.Context, query string) (*sql.Stmt, error)
     QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
     QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row
+    Query(query string, args ...interface{}) (*sql.Rows, error)
 }
 
 type repository struct {
@@ -32,4 +33,24 @@ func (r *repository) CreateRoom(ctx context.Context, room *Room) (*Room, error) 
 
     room.ID = strconv.Itoa(lastInsertID)
     return room, nil    
+}
+
+func (r *repository) FetchRooms() ([]*Room, error) {
+    query := `SELECT id, name FROM room`
+    rows, err := r.db.Query(query)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    var rooms []*Room
+    for rows.Next() {
+        var room Room
+        if err := rows.Scan(&room.ID, &room.Name); err != nil {
+            return nil, err
+        }
+        rooms = append(rooms, &room)
+    }
+
+    return rooms, nil
 }

@@ -12,11 +12,33 @@ type service struct {
 }
 
 func NewService(repository Repository, h *Hub) Service {
-    return &service {
+    s := &service {
         repository,
         h,
         time.Duration(2) * time.Second,
     }
+
+    err := s.FetchRooms();
+    if err != nil {
+        panic(err)
+    }
+
+    return s;
+}
+
+// Populate hub with rooms from database
+func (s *service) FetchRooms() error {
+    rooms, err := s.Repository.FetchRooms()
+    if err != nil {
+        return err;
+    }
+
+    for _, room := range rooms {
+        room.Clients = make(map[string]*Client)
+        s.hub.Rooms[room.ID] = room
+    }
+
+    return nil;
 }
 
 func (s *service) CreateRoom(c context.Context, req *CreateRoomReq) (*CreateRoomRes, error) {
