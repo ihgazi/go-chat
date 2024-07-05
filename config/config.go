@@ -4,21 +4,14 @@ import (
 	"os"
 
 	"github.com/joho/godotenv"
-	"github.com/pelletier/go-toml/v2"
 	"log"
 )
 
 type Config struct {
-	GatewayConfig struct {
-		Host string `toml:"HOST"`
-		Port int    `toml:"PORT"`
-	} `toml:"gateway_dev"`
-	ServerConfig struct {
-		Host string `toml:"HOST"`
-		Port int    `toml:"PORT"`
-	} `toml:"server_dev"`
-    SecretKey string    
-    PostgresUrl string
+	ServerHost  string
+	ServerPort  string
+	SecretKey   string
+	PostgresUrl string
 }
 
 // Using a singleton pattern to load the config only once and reduce read calls
@@ -33,24 +26,17 @@ func LoadConfig() Config {
 	// loading config if not already loaded
 	config = &Config{}
 
-	tomlFile, err := os.ReadFile("config.toml")
+	err := godotenv.Load(".env")
 	if err != nil {
-		panic(err)
+		log.Fatalf("Error loading .env file: %s", err)
 	}
 
-	if err = toml.Unmarshal(tomlFile, config); err != nil {
-		panic(err)
-	}
+	config.ServerHost = os.Getenv("SERVER_HOST")
+	config.ServerPort = os.Getenv("SERVER_PORT")
+	config.SecretKey = os.Getenv("SECRET_KEY")
+	config.PostgresUrl = os.Getenv("POSTGRES_URL")
 
-    err = godotenv.Load(".env")
-    if err != nil {
-        log.Fatalf("Error loading .env file: %s", err)
-    }
-
-    config.SecretKey = os.Getenv("SECRET_KEY")
-    config.PostgresUrl = os.Getenv("POSTGRES_URL")	
-
-    return *config
+	return *config
 }
 
 // Load .env configs

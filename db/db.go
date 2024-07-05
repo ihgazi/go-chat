@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	_ "github.com/lib/pq"
 
-    "github.com/ihgazi/go-chat/config"
+	"github.com/ihgazi/go-chat/config"
 )
 
 type Database struct {
@@ -12,7 +12,7 @@ type Database struct {
 }
 
 func NewDatabase() (*Database, error) {
-    PostgresUrl := config.LoadConfig().PostgresUrl
+	PostgresUrl := config.LoadConfig().PostgresUrl
 
 	db, err := sql.Open("postgres", PostgresUrl)
 	if err != nil {
