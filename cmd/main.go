@@ -25,14 +25,16 @@ func main() {
 	userHndlr := user.NewHandler(userSvc)
 
 	hub := ws.NewHub()
-	wsHandler := ws.NewHandler(hub)
+	wsRep := ws.NewRepository(dbConn.GetDB())
+	wsSvc := ws.NewService(wsRep, hub)
+	wsHndlr := ws.NewHandler(wsSvc)
 	go hub.Run()
 
 	// Pulling in server config
 	conf := config.LoadConfig("config.toml")
 
 	// Initializing GIN router and running the server
-	r := router.Init(userHndlr, wsHandler)
+	r := router.Init(userHndlr, wsHndlr)
 	addr := fmt.Sprintf("%s:%d", conf.ServerConfig.Host, conf.ServerConfig.Port)
 	if err := r.Run(addr); err != nil {
 		log.Fatalf("Error: %v", err)
