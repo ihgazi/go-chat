@@ -3,6 +3,8 @@ package db
 import (
 	"database/sql"
 	_ "github.com/lib/pq"
+
+    "github.com/ihgazi/go-chat/config"
 )
 
 type Database struct {
@@ -10,7 +12,9 @@ type Database struct {
 }
 
 func NewDatabase() (*Database, error) {
-	db, err := sql.Open("postgres", "postgresql://postgres:123@localhost:5432/go-chat?sslmode=disable")
+    PostgresUrl := config.LoadConfig().PostgresUrl
+
+	db, err := sql.Open("postgres", PostgresUrl)
 	if err != nil {
 		return nil, err
 	}

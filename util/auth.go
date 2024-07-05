@@ -24,7 +24,7 @@ func deauthorize(c *gin.Context) {
 // Auth middle to check validity of JWT token
 func JWTValidateToken() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		secretKey := config.LoadEnv()
+		secretKey := config.LoadConfig().SecretKey
 		// Extract the token from the cookie
 		tokenString, err := c.Cookie("jwt")
 		if err != nil {
@@ -67,7 +67,7 @@ func JWTCreateToken(ID string, Username string) (string, error) {
 
 	// Fetch secret key from environment
 	// sign token with key
-	secretKey := config.LoadEnv()
+	secretKey := config.LoadConfig().SecretKey
 	ss, err := token.SignedString([]byte(secretKey))
 	if err != nil {
 		return "", err

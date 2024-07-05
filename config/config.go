@@ -17,12 +17,14 @@ type Config struct {
 		Host string `toml:"HOST"`
 		Port int    `toml:"PORT"`
 	} `toml:"server_dev"`
+    SecretKey string    
+    PostgresUrl string
 }
 
 // Using a singleton pattern to load the config only once and reduce read calls
 var config *Config
 
-func LoadConfig(path string) Config {
+func LoadConfig() Config {
 	// returning config if already loaded
 	if config != nil {
 		return *config
@@ -31,7 +33,7 @@ func LoadConfig(path string) Config {
 	// loading config if not already loaded
 	config = &Config{}
 
-	tomlFile, err := os.ReadFile(path)
+	tomlFile, err := os.ReadFile("config.toml")
 	if err != nil {
 		panic(err)
 	}
@@ -40,7 +42,15 @@ func LoadConfig(path string) Config {
 		panic(err)
 	}
 
-	return *config
+    err = godotenv.Load(".env")
+    if err != nil {
+        log.Fatalf("Error loading .env file: %s", err)
+    }
+
+    config.SecretKey = os.Getenv("SECRET_KEY")
+    config.PostgresUrl = os.Getenv("POSTGRES_URL")	
+
+    return *config
 }
 
 // Load .env configs

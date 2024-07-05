@@ -31,7 +31,7 @@ func main() {
 	go hub.Run()
 
 	// Pulling in server config
-	conf := config.LoadConfig("config.toml")
+	conf := config.LoadConfig()
 
 	// Initializing GIN router and running the server
 	r := router.Init(userHndlr, wsHndlr)
