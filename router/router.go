@@ -39,10 +39,13 @@ func Init(userHandler *user.Handler, wsHandler *ws.Handler) *gin.Engine {
 	{
 		protected.GET("/auth", userHandler.AuthUser)
 		protected.POST("/createRoom", wsHandler.CreateRoom)
-		protected.GET("/joinRoom/:roomId", wsHandler.JoinRoom)
 		protected.GET("/getRooms", wsHandler.GetRooms)
 		protected.GET("/getClients/:roomId", wsHandler.GetClients)
 	}
+
+    // Moved joinRoom out of protected group
+    // for WebSocket issues in deployment
+	r.GET("/joinRoom/:roomId", wsHandler.JoinRoom)
 
 	return r
 }
