@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"strconv"
 
 	"github.com/ihgazi/go-chat/config"
 	"github.com/ihgazi/go-chat/db"
@@ -35,7 +36,8 @@ func main() {
 
 	// Initializing GIN router and running the server
 	r := router.Init(userHndlr, wsHndlr)
-	addr := fmt.Sprintf("%s:%d", conf.ServerConfig.Host, conf.ServerConfig.Port)
+	port, _ := strconv.Atoi(conf.ServerPort)
+	addr := fmt.Sprintf("%s:%d", conf.ServerHost, port)
 	if err := r.Run(addr); err != nil {
 		log.Fatalf("Error: %v", err)
 	}
