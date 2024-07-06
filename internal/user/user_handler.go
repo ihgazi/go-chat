@@ -2,7 +2,9 @@ package user
 
 import (
     "net/http"
+
     "github.com/gin-gonic/gin"
+    "github.com/ihgazi/go-chat/config"
 )
 
 // Handler object is used to create the user 
@@ -50,13 +52,17 @@ func (h *Handler) Login(c *gin.Context) {
     }
 
     // Set cookie in context with JWT token
-    c.SetCookie("jwt", u.accessToken, 3600, "/", "localhost", false, true)
+    domain := config.LoadConfig().ClientDomain
+    secure := domain != "localhost"
+    c.SetCookie("jwt", u.accessToken, 3600, "/", domain, secure, true)
     c.JSON(http.StatusOK, u)
 }
 
 func (h *Handler) Logout(c *gin.Context) {
     // Reset cookie
-    c.SetCookie("jwt", "", -1, "", "", false, true)
+    domain := config.LoadConfig().ClientDomain
+    secure := domain != "localhost"
+    c.SetCookie("jwt", "", -1, "", domain, secure, true)
     c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
 }
 
