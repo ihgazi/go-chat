@@ -54,6 +54,7 @@ func (h *Handler) Login(c *gin.Context) {
     // Set cookie in context with JWT token
     domain := config.LoadConfig().ClientDomain
     secure := domain != "localhost"
+    c.SetSameSite(http.SameSiteNoneMode)
     c.SetCookie("jwt", u.accessToken, 3600, "/", domain, secure, true)
     c.JSON(http.StatusOK, u)
 }
@@ -62,6 +63,7 @@ func (h *Handler) Logout(c *gin.Context) {
     // Reset cookie
     domain := config.LoadConfig().ClientDomain
     secure := domain != "localhost"
+    c.SetSameSite(http.SameSiteNoneMode)
     c.SetCookie("jwt", "", -1, "", domain, secure, true)
     c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
 }
