@@ -12,6 +12,7 @@ type Config struct {
 	ServerPort  string
 	SecretKey   string
 	PostgresUrl string
+    ClientDomain string
 }
 
 // Using a singleton pattern to load the config only once and reduce read calls
@@ -35,6 +36,7 @@ func LoadConfig() Config {
 	config.ServerPort = os.Getenv("SERVER_PORT")
 	config.SecretKey = os.Getenv("SECRET_KEY")
 	config.PostgresUrl = os.Getenv("POSTGRES_URL")
+    config.ClientDomain = os.Getenv("CLIENT_DOMAIN")
 
 	return *config
 }

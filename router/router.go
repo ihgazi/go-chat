@@ -20,7 +20,7 @@ func Init(userHandler *user.Handler, wsHandler *ws.Handler) *gin.Engine {
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:3000"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE"},
-		AllowHeaders:     []string{"Origin"},
+		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 		AllowOriginFunc: func(origin string) bool {
@@ -39,10 +39,13 @@ func Init(userHandler *user.Handler, wsHandler *ws.Handler) *gin.Engine {
 	{
 		protected.GET("/auth", userHandler.AuthUser)
 		protected.POST("/createRoom", wsHandler.CreateRoom)
-		protected.GET("/joinRoom/:roomId", wsHandler.JoinRoom)
 		protected.GET("/getRooms", wsHandler.GetRooms)
 		protected.GET("/getClients/:roomId", wsHandler.GetClients)
 	}
+
+    // Moved joinRoom out of protected group
+    // for WebSocket issues in deployment
+	r.GET("/joinRoom/:roomId", wsHandler.JoinRoom)
 
 	return r
 }
