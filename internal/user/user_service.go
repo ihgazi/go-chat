@@ -20,7 +20,7 @@ type service struct {
 func NewService(repository Repository) Service {
     return &service{
         repository,
-        time.Duration(2) * time.Second,
+        time.Duration(5) * time.Second,
     }
 }
 

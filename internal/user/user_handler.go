@@ -47,7 +47,7 @@ func (h *Handler) Login(c *gin.Context) {
     // Calling service method
     u, err := h.Service.Login(c.Request.Context(), &user)
     if err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid Credentials!"})
         return
     }
 

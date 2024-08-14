@@ -1,6 +1,7 @@
 package user
 
 import (
+    "errors"
     "context"
     "database/sql"
 )
@@ -24,9 +25,16 @@ func NewRepository(db DBTX) Repository {
 }
 
 func (r *repository) CreateUser(ctx context.Context, user *User) (*User, error) {
+    // Check if user is already registered
+    query := `SELECT id FROM users WHERE email = $1`
+    rows, err := r.db.QueryContext(ctx, query, user.Email)
+    if rows.Next() {
+        return &User{}, errors.New("User already exists!")
+    }
+
     var lastInsertID int
-    query := `INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING id`
-    err := r.db.QueryRowContext(ctx, query, user.Username, user.Email, user.Password).Scan(&lastInsertID)
+    query = `INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING id`
+    err = r.db.QueryRowContext(ctx, query, user.Username, user.Email, user.Password).Scan(&lastInsertID)
     
     if err != nil {
         return &User{}, err
