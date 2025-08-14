@@ -26,11 +26,12 @@ type ClientRes struct {
 type Repository interface {
     CreateRoom(ctx context.Context, room *Room) (*Room, error)
     FetchRooms() ([]*Room, error)
+    JoinRoom(ctx context.Context, client *Client) (error)
 }
 
 type Service interface {
     CreateRoom(ctx context.Context, req *CreateRoomReq) (*CreateRoomRes, error)
-    JoinRoom(ctx context.Context, cl *Client, m *Message) 
+    JoinRoom(ctx context.Context, cl *Client, m *Message) (error)
     GetRooms(ctx context.Context) (r []RoomRes)
     GetClients(ctx context.Context, roomID string) (c []ClientRes)
     FetchRooms() (error)

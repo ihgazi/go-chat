@@ -63,7 +63,12 @@ func (s *service) CreateRoom(c context.Context, req *CreateRoomReq) (*CreateRoom
     }, nil
 }
 
-func (s *service) JoinRoom(c context.Context, cl *Client, m *Message) {
+func (s *service) JoinRoom(c context.Context, cl *Client, m *Message) (error) {
+    err := s.Repository.JoinRoom(c, cl)
+    if err != nil {
+        return err;
+    }
+
     // Register new client through the register channel
     s.hub.Register <- cl
     // Broadcast the message
@@ -71,6 +76,8 @@ func (s *service) JoinRoom(c context.Context, cl *Client, m *Message) {
 
     go cl.WriteMessage()
     cl.ReadMessage(s.hub)  
+
+    return nil;
 }
 
 func (s *service) GetRooms(ctx context.Context) (r []RoomRes) {
