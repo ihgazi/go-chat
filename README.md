@@ -63,15 +63,7 @@ go run cmd/main.go
 
 The server will start and listen on the port specified in your `.env` file.
 
-### 6. API Endpoints
-
-- **User Registration & Login:** `/api/register`, `/api/login`
-- **WebSocket Endpoint:** `/ws`
-- **Room Management:** `/api/rooms`, `/api/rooms/:id/members`
-
-Refer to the code and router definitions for more details.
-
-### 7. Testing
+### 6. Testing
 
 You can use tools like [Postman](https://www.postman.com/) or [curl](https://curl.se/) to interact with the REST endpoints and WebSocket clients for real-time messaging.
 
