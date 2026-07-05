@@ -78,6 +78,7 @@ func (h *Handler) Connect(c *gin.Context) {
 func (h *Handler) JoinRoom(c *gin.Context) {
 	roomID := c.Param("roomId")
 	clientIDStr := c.GetString("userID")
+	usernameStr := c.GetString("username")
 
 	// Add validation to prevent database casting errors
 	if clientIDStr == "" || roomID == "" {
@@ -85,7 +86,7 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 		return
 	}
 
-	err := h.Service.JoinRoom(c.Request.Context(), roomID, clientIDStr)
+	err := h.Service.JoinRoom(c.Request.Context(), roomID, clientIDStr, usernameStr)
 	if err != nil {
 		errMsg := fmt.Sprintf("Failed to join room %s: %v", roomID, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": errMsg})

@@ -85,7 +85,7 @@ func (s *service) Connect(c context.Context, cl *Client) error {
 	return nil
 }
 
-func (s *service) JoinRoom(c context.Context, roomID string, userID string) error {
+func (s *service) JoinRoom(c context.Context, roomID string, userID string, username string) error {
 	err := s.Repository.JoinRoom(c, roomID, userID)
 	if err != nil {
 		return err
@@ -95,6 +95,16 @@ func (s *service) JoinRoom(c context.Context, roomID string, userID string) erro
 	if room, ok := s.hub.Rooms[roomID]; ok {
 		room.Members[userID] = true
 	}
+
+	// Broadcast a system message to the room
+	msg := &Message{
+		Type:     "system",
+		Event:    "user_joined",
+		RoomID:   roomID,
+		UserID:   userID,
+		Username: username,
+	}
+	s.hub.Broadcast <- msg
 
 	return nil
 }

@@ -14,6 +14,8 @@ type Client struct {
 }
 
 type Message struct {
+	Type     string `json:"type"`
+	Event    string `json:"event,omitempty"`
 	Content  string `json:"content"`
 	RoomID   string `json:"room_id"`
 	Username string `json:"username"`
@@ -56,6 +58,9 @@ func (cl *Client) ReadMessage(hub *Hub) {
 		// Enforce the sender's identity to prevent spoofing
 		msg.Username = cl.Username
 		msg.UserID = cl.ID
+		if msg.Type == "" {
+			msg.Type = "user"
+		}
 
 		hub.Broadcast <- &msg
 	}

@@ -77,8 +77,11 @@ func (r *repository) JoinRoom(ctx context.Context, roomID string, userID string)
 // WriteMessage adds a new message to the room_message table
 // It is called asynchronously with websocket messages
 func (r *repository) WriteMessage(ctx context.Context, msg *Message) error {
-	query := `INSERT INTO room_message (room_id, user_id, message) VALUES ($1, $2, $3)`
-	_, err := r.db.ExecContext(ctx, query, msg.RoomID, msg.UserID, msg.Content)
+	if msg.Type == "" {
+		msg.Type = "user"
+	}
+	query := `INSERT INTO room_message (room_id, user_id, message, message_type, event) VALUES ($1, $2, $3, $4, $5)`
+	_, err := r.db.ExecContext(ctx, query, msg.RoomID, msg.UserID, msg.Content, msg.Type, msg.Event)
 	if err != nil {
 		return err
 	}
@@ -90,7 +93,7 @@ func (r *repository) WriteMessage(ctx context.Context, msg *Message) error {
 // It is called when a user joins a room to load previous messages
 func (r *repository) FetchRoomMessages(ctx context.Context, roomID string) ([]*Message, error) {
 	query := `
-        SELECT rm.user_id, u.username, rm.message
+        SELECT rm.user_id, u.username, rm.message, COALESCE(rm.message_type, 'user'), COALESCE(rm.event, '')
         FROM room_message rm
         JOIN users u ON rm.user_id = u.id
         WHERE rm.room_id = $1 AND
@@ -106,7 +109,7 @@ func (r *repository) FetchRoomMessages(ctx context.Context, roomID string) ([]*M
 	var messages []*Message
 	for rows.Next() {
 		var msg Message
-		if err := rows.Scan(&msg.UserID, &msg.Username, &msg.Content); err != nil {
+		if err := rows.Scan(&msg.UserID, &msg.Username, &msg.Content, &msg.Type, &msg.Event); err != nil {
 			return nil, err
 		}
 		msg.RoomID = roomID

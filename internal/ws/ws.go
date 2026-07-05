@@ -38,7 +38,7 @@ type Repository interface {
 type Service interface {
 	CreateRoom(ctx context.Context, req *CreateRoomReq) (*CreateRoomRes, error)
 	Connect(ctx context.Context, cl *Client) error
-	JoinRoom(ctx context.Context, roomID string, userID string) error
+	JoinRoom(ctx context.Context, roomID string, userID string, username string) error
 	GetRooms(ctx context.Context) (r []RoomRes)
 	GetMyRooms(ctx context.Context, userID string) (r []RoomRes)
 	GetClients(ctx context.Context, roomID string) (c []ClientRes)
