@@ -10,7 +10,6 @@ type Client struct {
 	Conn     *websocket.Conn
 	Message  chan *Message
 	ID       string `json:"id"`
-	RoomID   string `json:"room_id"`
 	Username string `json:"username"`
 }
 
@@ -21,8 +20,7 @@ type Message struct {
 	UserID   string `json:"user_id"`
 }
 
-// Take message from client channel
-// for passing to frontend
+// Take message from client channel for passing to frontend
 func (cl *Client) WriteMessage() {
 	defer func() {
 		cl.Conn.Close()
@@ -46,7 +44,8 @@ func (cl *Client) ReadMessage(hub *Hub) {
 	}()
 
 	for {
-		_, m, err := cl.Conn.ReadMessage()
+		var msg Message
+		err := cl.Conn.ReadJSON(&msg)
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Printf("error: %v", err)
@@ -54,13 +53,10 @@ func (cl *Client) ReadMessage(hub *Hub) {
 			break
 		}
 
-		msg := &Message{
-			Content:  string(m),
-			RoomID:   cl.RoomID,
-			Username: cl.Username,
-			UserID:   cl.ID,
-		}
+		// Enforce the sender's identity to prevent spoofing
+		msg.Username = cl.Username
+		msg.UserID = cl.ID
 
-		hub.Broadcast <- msg
+		hub.Broadcast <- &msg
 	}
 }

@@ -34,8 +34,19 @@ func (s *service) FetchRooms() error {
 		return err
 	}
 
+	membersMap, err := s.Repository.GetRoomMembers(context.Background())
+	if err != nil {
+		// Log the error but don't crash, it might be an empty db initially
+		log.Printf("Error fetching room members: %v", err)
+	}
+
 	for _, room := range rooms {
-		room.Clients = make(map[string]*Client)
+		room.Members = make(map[string]bool)
+		if members, ok := membersMap[room.ID]; ok {
+			for _, userID := range members {
+				room.Members[userID] = true
+			}
+		}
 		s.hub.Rooms[room.ID] = room
 	}
 
@@ -55,7 +66,7 @@ func (s *service) CreateRoom(c context.Context, req *CreateRoomReq) (*CreateRoom
 		return nil, err
 	}
 
-	room.Clients = make(map[string]*Client)
+	room.Members = make(map[string]bool)
 	s.hub.Rooms[room.ID] = room
 
 	return &CreateRoomRes{
@@ -64,37 +75,26 @@ func (s *service) CreateRoom(c context.Context, req *CreateRoomReq) (*CreateRoom
 	}, nil
 }
 
-func (s *service) JoinRoom(c context.Context, cl *Client, m *Message) error {
-	err := s.Repository.JoinRoom(c, cl)
+func (s *service) Connect(c context.Context, cl *Client) error {
+	// Register new client through the register channel
+	s.hub.Register <- cl
+
+	go cl.WriteMessage()
+	cl.ReadMessage(s.hub)
+
+	return nil
+}
+
+func (s *service) JoinRoom(c context.Context, roomID string, userID string) error {
+	err := s.Repository.JoinRoom(c, roomID, userID)
 	if err != nil {
 		return err
 	}
 
-	// Register new client through the register channel
-	s.hub.Register <- cl
-	// Broadcast the message
-	s.hub.Broadcast <- m
-
-	history, err := s.Repository.FetchRoomMessages(c, cl.RoomID)
-	if err != nil {
-		// TODO: Notify client about error
-		log.Printf("Failed to fetch room messages: %v", err)
+	// Update the in-memory cache
+	if room, ok := s.hub.Rooms[roomID]; ok {
+		room.Members[userID] = true
 	}
-
-	go cl.WriteMessage()
-
-	// Send chat history to the client
-	// Add a small delay to prevent race condition
-	// TODO: Implement system messages to handle synchronization
-	go func() {
-		time.Sleep(5000 * time.Millisecond)
-		for _, msg := range history {
-			cl.Message <- msg
-			time.Sleep(100 * time.Millisecond)
-		}
-	}()
-
-	cl.ReadMessage(s.hub)
 
 	return nil
 }
@@ -111,19 +111,29 @@ func (s *service) GetRooms(ctx context.Context) (r []RoomRes) {
 	return rooms
 }
 
-func (s *service) GetClients(ctx context.Context, roomID string) (c []ClientRes) {
-	var clients []ClientRes
+func (s *service) GetMyRooms(ctx context.Context, userID string) (r []RoomRes) {
+	var myRooms []RoomRes
 
-	if _, ok := s.hub.Rooms[roomID]; !ok {
-		clients = make([]ClientRes, 0)
-		return clients
+	for _, room := range s.hub.Rooms {
+		if _, ok := room.Members[userID]; ok {
+			myRooms = append(myRooms, RoomRes{
+				ID:   room.ID,
+				Name: room.Name,
+			})
+		}
 	}
 
-	for _, c := range s.hub.Rooms[roomID].Clients {
-		clients = append(clients, ClientRes{
-			ID:       c.ID,
-			Username: c.Username,
-		})
+	if myRooms == nil {
+		myRooms = make([]RoomRes, 0)
+	}
+
+	return myRooms
+}
+
+func (s *service) GetClients(ctx context.Context, roomID string) (c []ClientRes) {
+	clients, err := s.Repository.GetClients(ctx, roomID)
+	if err != nil || clients == nil {
+		return make([]ClientRes, 0)
 	}
 
 	return clients

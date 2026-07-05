@@ -57,16 +57,16 @@ func (r *repository) FetchRooms() ([]*Room, error) {
 
 // JoinRoom adds a new entry to room_member table
 // if user already exists update last_online time
-func (r *repository) JoinRoom(ctx context.Context, client *Client) error {
+func (r *repository) JoinRoom(ctx context.Context, roomID string, userID string) error {
 	query := `SELECT FROM room_member WHERE room_id = $1 AND user_id = $2`
-	err := r.db.QueryRowContext(ctx, query, client.RoomID, client.ID).Scan()
+	err := r.db.QueryRowContext(ctx, query, roomID, userID).Scan()
 
 	if err == sql.ErrNoRows {
 		query = `INSERT INTO room_member (room_id, user_id) VALUES ($1, $2)`
-		_, err = r.db.ExecContext(ctx, query, client.RoomID, client.ID)
+		_, err = r.db.ExecContext(ctx, query, roomID, userID)
 	} else if err == nil {
 		query = `UPDATE room_member SET last_online = NOW() WHERE room_id = $1 and user_id = $2`
-		_, err = r.db.ExecContext(ctx, query, client.RoomID, client.ID)
+		_, err = r.db.ExecContext(ctx, query, roomID, userID)
 	} else {
 		return err
 	}
@@ -113,4 +113,60 @@ func (r *repository) FetchRoomMessages(ctx context.Context, roomID string) ([]*M
 		messages = append(messages, &msg)
 	}
 	return messages, nil
+}
+
+// Get the list of joined clients for a specific room.
+func (r *repository) GetClients(ctx context.Context, roomID string) ([]ClientRes, error) {
+	query := `
+		SELECT u.id, u.username, u.is_online
+		FROM users u
+		JOIN room_member rm ON u.id = rm.user_id
+		WHERE rm.room_id = $1
+	`
+	rows, err := r.db.QueryContext(ctx, query, roomID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var clients []ClientRes
+	for rows.Next() {
+		var c ClientRes
+		if err := rows.Scan(&c.ID, &c.Username, &c.IsOnline); err != nil {
+			return nil, err
+		}
+		clients = append(clients, c)
+	}
+	return clients, nil
+}
+
+func (r *repository) SetUserOnlineStatus(ctx context.Context, userID string, isOnline bool) error {
+	var query string
+	if isOnline {
+		query = `UPDATE users SET is_online = true, last_login = NOW() WHERE id = $1`
+	} else {
+		query = `UPDATE users SET is_online = false WHERE id = $1`
+	}
+	_, err := r.db.ExecContext(ctx, query, userID)
+	return err
+}
+
+// Get entire list of rooms and their corresponding members. This is used to initialize the in-memory map maintained by Hub.
+func (r *repository) GetRoomMembers(ctx context.Context) (map[string][]string, error) {
+	query := `SELECT room_id, CAST(user_id AS VARCHAR) FROM room_member`
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	members := make(map[string][]string)
+	for rows.Next() {
+		var roomID, userID string
+		if err := rows.Scan(&roomID, &userID); err != nil {
+			return nil, err
+		}
+		members[roomID] = append(members[roomID], userID)
+	}
+	return members, nil
 }

@@ -7,26 +7,28 @@ import (
 )
 
 type Room struct {
-	ID      string             `json:"id"`
-	Name    string             `json:"name"`
-	Clients map[string]*Client `json:"clients"`
+	ID      string          `json:"id"`
+	Name    string          `json:"name"`
+	Members map[string]bool `json:"-"`
 }
 
 type Hub struct {
-	Rooms      map[string]*Room
-	Register   chan *Client
-	Unregister chan *Client
-	Broadcast  chan *Message
-	Repo       Repository
+	ActiveClients map[string]*Client
+	Rooms         map[string]*Room
+	Register      chan *Client
+	Unregister    chan *Client
+	Broadcast     chan *Message
+	Repo          Repository
 }
 
 func NewHub(repository Repository) *Hub {
 	return &Hub{
-		Rooms:      make(map[string]*Room),
-		Register:   make(chan *Client),
-		Unregister: make(chan *Client),
-		Broadcast:  make(chan *Message, 5),
-		Repo:       repository,
+		ActiveClients: make(map[string]*Client),
+		Rooms:         make(map[string]*Room),
+		Register:      make(chan *Client),
+		Unregister:    make(chan *Client),
+		Broadcast:     make(chan *Message, 5),
+		Repo:          repository,
 	}
 }
 
@@ -34,37 +36,30 @@ func (h *Hub) Run() {
 	for {
 		select {
 		case cl := <-h.Register:
-			if _, ok := h.Rooms[cl.RoomID]; ok {
-				r := h.Rooms[cl.RoomID]
-
-				if _, ok := r.Clients[cl.ID]; !ok {
-					r.Clients[cl.ID] = cl
-				}
+			// Register client globally by their UserID
+			if _, ok := h.ActiveClients[cl.ID]; !ok {
+				h.ActiveClients[cl.ID] = cl
+				go h.Repo.SetUserOnlineStatus(context.Background(), cl.ID, true)
 			}
 		case cl := <-h.Unregister:
-			if _, ok := h.Rooms[cl.RoomID]; ok {
-				r := h.Rooms[cl.RoomID]
-
-				if _, ok := r.Clients[cl.ID]; ok {
-					// Broadcast exit message
-					h.Broadcast <- &Message{
-						Content:  "user has left the chat",
-						RoomID:   cl.RoomID,
-						Username: cl.Username,
-						UserID:   cl.ID,
-					}
-
-					delete(r.Clients, cl.ID)
-					close(cl.Message)
-				}
+			// Remove client from global online users
+			if _, ok := h.ActiveClients[cl.ID]; ok {
+				delete(h.ActiveClients, cl.ID)
+				close(cl.Message)
+				go h.Repo.SetUserOnlineStatus(context.Background(), cl.ID, false)
 			}
 		case msg := <-h.Broadcast:
-			if _, ok := h.Rooms[msg.RoomID]; ok {
-				for _, cl := range h.Rooms[msg.RoomID].Clients {
-					cl.Message <- msg
+			// Look up room members in our cached map
+			if room, ok := h.Rooms[msg.RoomID]; ok {
+				// Broadcast to all online members of this room
+				for userID := range room.Members {
+					if cl, isOnline := h.ActiveClients[userID]; isOnline {
+						cl.Message <- msg
+					}
 				}
 
 				// Asynchronously write message to database
+				// TODO: Implement a write pool on database to prevent bottleneck
 				go func(msg *Message) {
 					ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 					defer cancel()
@@ -74,5 +69,14 @@ func (h *Hub) Run() {
 				}(msg)
 			}
 		}
+	}
+}
+
+// Shutdown safely disconnects all clients connected to this specific server node
+// and ensures their database status is set back to offline to prevent zombies.
+func (h *Hub) Shutdown() {
+	for userID, client := range h.ActiveClients {
+		h.Repo.SetUserOnlineStatus(context.Background(), userID, false)
+		client.Conn.Close()
 	}
 }
