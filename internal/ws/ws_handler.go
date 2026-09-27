@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -42,45 +43,76 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-func (h *Handler) JoinRoom(c *gin.Context) {
+// Connect upgrades the HTTP connection to a WebSocket session
+func (h *Handler) Connect(c *gin.Context) {
+	clientIDStr := c.GetString("userID")
+	usernameStr := c.GetString("username")
+
+	// Validate query parameters before upgrading the connection
+	if clientIDStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "userID query parameter is required"})
+		return
+	}
+
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	roomID := c.Param("roomId")
-	clientIDStr := c.Query("userID")
-	usernameStr := c.Query("username")
-
 	cl := &Client{
 		Conn:     conn,
 		Message:  make(chan *Message),
 		ID:       clientIDStr,
-		RoomID:   roomID,
 		Username: usernameStr,
 	}
 
-	m := &Message{
-		Content:  "A new user has joined the room",
-		RoomID:   roomID,
-		Username: usernameStr,
-		UserID:   clientIDStr,
-	}
-
-	err = h.Service.JoinRoom(c.Request.Context(), cl, m)
+	err = h.Service.Connect(c.Request.Context(), cl)
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Printf("error connecting client: %v", err)
 		conn.Close()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to join room!"})
 	}
 }
 
-// get currently active rooms in hub
+// JoinRoom is a REST endpoint to add a user to a room
+func (h *Handler) JoinRoom(c *gin.Context) {
+	roomID := c.Param("roomId")
+	clientIDStr := c.GetString("userID")
+	usernameStr := c.GetString("username")
+
+	// Add validation to prevent database casting errors
+	if clientIDStr == "" || roomID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "userID query parameter is required"})
+		return
+	}
+
+	err := h.Service.JoinRoom(c.Request.Context(), roomID, clientIDStr, usernameStr)
+	if err != nil {
+		errMsg := fmt.Sprintf("Failed to join room %s: %v", roomID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": errMsg})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Successfully joined room"})
+}
+
+// Get list of users in the Room
 func (h *Handler) GetRooms(c *gin.Context) {
 	r := h.Service.GetRooms(c.Request.Context())
 
 	c.JSON(http.StatusOK, r)
+}
+
+// GetMyRooms returns only the rooms the current user is a member of
+func (h *Handler) GetMyRooms(c *gin.Context) {
+	userIDStr := c.GetString("userID")
+	if userIDStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "userID query parameter is required"})
+		return
+	}
+
+	rooms := h.Service.GetMyRooms(c.Request.Context(), userIDStr)
+	c.JSON(http.StatusOK, rooms)
 }
 
 func (h *Handler) GetClients(c *gin.Context) {
